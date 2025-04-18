@@ -1,0 +1,27 @@
+{
+	"songs": [
+		[
+			"Blackburg",
+			"face",
+			[
+				166,
+				113,
+				53
+			]
+		]
+	],
+	"hiddenUntilUnlocked": false,
+	"hideFreeplay": false,
+	"weekBackground": "stage",
+	"difficulties": "",
+	"weekCharacters": [
+		"bf",
+		"bf",
+		"gf"
+	],
+	"storyName": "Chapter1",
+	"weekName": "Chapter1",
+	"hideStoryMode": false,
+	"weekBefore": "tutorial",
+	"startUnlocked": true
+}

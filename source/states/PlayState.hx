@@ -204,6 +204,7 @@ class PlayState extends MusicBeatState
 
 	public var iconP1:HealthIcon;
 	public var iconP2:HealthIcon;
+	public var camEvent:FlxCamera; //camera made for events
 	public var camHUD:FlxCamera;
 	public var camGame:FlxCamera;
 	public var camOther:FlxCamera;
@@ -222,6 +223,18 @@ class PlayState extends MusicBeatState
 	public static var deathCounter:Int = 0;
 
 	public var defaultCamZoom:Float = 1.05;
+
+	/**
+	 * variables for the camera movement on note click
+	 */
+	public var camMovement:FlxTween;
+	public var moveOffset:Int = 25;
+
+	/**
+	 * variables for events and shit
+	 */
+	 public var upperBar:FlxSprite;
+	 public var lowerBar:FlxSprite;
 
 	// how big to stretch the pixel art assets
 	public static var daPixelZoom:Float = 6;
@@ -307,11 +320,14 @@ class PlayState extends MusicBeatState
 
 		// var gameCam:FlxCamera = FlxG.camera;
 		camGame = initPsychCamera();
+		camEvent = new FlxCamera();
 		camHUD = new FlxCamera();
 		camOther = new FlxCamera();
+		camEvent.bgColor.alpha = 0;
 		camHUD.bgColor.alpha = 0;
 		camOther.bgColor.alpha = 0;
 
+		FlxG.cameras.add(camEvent, false);
 		FlxG.cameras.add(camHUD, false);
 		FlxG.cameras.add(camOther, false);
 
@@ -389,6 +405,7 @@ class PlayState extends MusicBeatState
 			case 'tank': new Tank();					//Week 7 - Ugh, Guns, Stress
 			case 'phillyStreets': new PhillyStreets(); 	//Weekend 1 - Darnell, Lit Up, 2Hot
 			case 'phillyBlazin': new PhillyBlazin();	//Weekend 1 - Blazin
+			case 'shop': new Shop(); 					//Chapter 4 - Underground
 		}
 		if(isPixelStage) introSoundsSuffix = '-pixel';
 
@@ -472,10 +489,22 @@ class PlayState extends MusicBeatState
 
 		uiGroup = new FlxSpriteGroup();
 		comboGroup = new FlxSpriteGroup();
+		eventGroup = new FlxSpriteGroup();
 		noteGroup = new FlxTypedGroup<FlxBasic>();
+		add(eventGroup);
 		add(comboGroup);
 		add(uiGroup);
 		add(noteGroup);
+
+		upperBar = new FlxSprite(-110, -330);
+		upperBar.makeGraphic(1500, 350, FlxColor.BLACK);
+		upperBar.updateHitbox();
+		eventGroup.add(upperBar);
+
+		lowerBar = new FlxSprite(-110, 700);
+		lowerBar.makeGraphic(1500, 350, FlxColor.BLACK);
+		lowerBar.updateHitbox();
+		eventGroup.add(lowerBar);
 
 		Conductor.songPosition = -Conductor.crochet * 5 + Conductor.offset;
 		var showTime:Bool = (ClientPrefs.data.timeBarType != 'Disabled');
@@ -563,6 +592,7 @@ class PlayState extends MusicBeatState
 		if(ClientPrefs.data.downScroll)
 			botplayTxt.y = healthBar.y + 70;
 
+		eventGroup.cameras = [camEvent];
 		uiGroup.cameras = [camHUD];
 		noteGroup.cameras = [camHUD];
 		comboGroup.cameras = [camHUD];
@@ -2298,6 +2328,13 @@ class PlayState extends MusicBeatState
 			case 'Play Sound':
 				if(flValue2 == null) flValue2 = 1;
 				FlxG.sound.play(Paths.sound(value1), flValue2);
+
+			case 'Cinematics':
+				if (flValue1 == null) flValue1 = 0;
+				if (flValue2 == null) flValue2 = 0.25;
+
+				FlxTween.tween(upperBar, {y: upperBar.y + flValue1}, flValue2, {ease:FlxEase.quadOut});
+				FlxTween.tween(lowerBar, {y: lowerBar.y - flValue1}, flValue2, {ease: FlxEase.quadOut});
 		}
 
 		stagesFunc(function(stage:BaseStage) stage.eventCalled(eventName, value1, value2, flValue1, flValue2, strumTime));
@@ -2361,6 +2398,15 @@ class PlayState extends MusicBeatState
 				});
 			}
 		}
+	}
+
+	function cameraSetTarget(target:String) {
+		var isDad:Bool = false;
+		if(target == 'dad') {
+			isDad = true;
+		}
+		moveCamera(isDad);
+		return isDad;
 	}
 
 	public function tweenCamIn() {
@@ -2532,6 +2578,8 @@ class PlayState extends MusicBeatState
 	public var uiGroup:FlxSpriteGroup;
 	// Stores Note Objects in a Group
 	public var noteGroup:FlxTypedGroup<FlxBasic>;
+	// Stores HUD Objects in a Group that needs to not move
+	public var eventGroup:FlxSpriteGroup;
 
 	private function cachePopUpScore()
 	{
@@ -2982,6 +3030,50 @@ class PlayState extends MusicBeatState
 		if (songName != 'tutorial')
 			camZooming = true;
 
+		if (!isCameraOnForcedPos)
+			{
+				if (!SONG.notes[curSection].mustHitSection) 
+				{
+					cameraSetTarget('dad');
+
+					if (camMovement != null && camMovement.active) {
+						camMovement.cancel();
+					}
+				
+					var duration = (Conductor.stepCrochet / 1000) * (0.9 + Math.random() * 0.2);
+					
+					var randomOffset = moveOffset * (0.8 + Math.random() * 0.4);
+	
+					switch (Math.abs(note.noteData)) 
+					{
+							case 0: // Left note
+								camMovement = FlxTween.tween(camFollow, {x: camFollow.x - randomOffset}, duration, {ease: FlxEase.sineOut,
+									onComplete: function(twn:FlxTween) {
+										FlxTween.tween(camFollow, {x: camFollow.x + (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+									}
+								});
+							case 1: // Down note
+								camMovement = FlxTween.tween(camFollow, {y: camFollow.y + randomOffset}, duration, {ease: FlxEase.sineOut,
+									onComplete: function(twn:FlxTween) {
+										FlxTween.tween(camFollow, {y: camFollow.y - (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+									}
+								});
+							case 2: // Up note
+								camMovement = FlxTween.tween(camFollow, {y: camFollow.y - randomOffset}, duration, {ease: FlxEase.sineOut,
+									onComplete: function(twn:FlxTween) {
+										FlxTween.tween(camFollow, {y: camFollow.y + (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+									}
+								});
+							case 3: // Right note
+								camMovement = FlxTween.tween(camFollow, {x: camFollow.x + randomOffset}, duration, {ease: FlxEase.sineOut,
+									onComplete: function(twn:FlxTween) {
+										FlxTween.tween(camFollow, {x: camFollow.x - (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+									}
+								});
+					}
+				}
+			}
+
 		if(note.noteType == 'Hey!' && dad.hasAnimation('hey'))
 		{
 			dad.playAnim('hey', true);
@@ -3035,6 +3127,49 @@ class PlayState extends MusicBeatState
 		if(result == LuaUtils.Function_Stop) return;
 
 		note.wasGoodHit = true;
+
+		if (!isCameraOnForcedPos)
+		{
+			if (SONG.notes[curSection].mustHitSection) 
+				{
+					cameraSetTarget('bf');
+					if (camMovement != null && camMovement.active) {
+						camMovement.cancel();
+					}
+					
+					var duration = (Conductor.stepCrochet / 1000) * (0.9 + Math.random() * 0.2);
+					
+					var randomOffset = moveOffset * (0.8 + Math.random() * 0.4);
+
+					switch (Math.abs(note.noteData)) 
+					{
+						case 0: // Left note
+							camMovement = FlxTween.tween(camFollow, {x: camFollow.x - randomOffset}, duration, {ease: FlxEase.sineOut,
+								onComplete: function(twn:FlxTween) {
+									FlxTween.tween(camFollow, {x: camFollow.x + (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+								}
+							});
+						case 1: // Down note
+							camMovement = FlxTween.tween(camFollow, {y: camFollow.y + randomOffset}, duration, {ease: FlxEase.sineOut,
+								onComplete: function(twn:FlxTween) {
+									FlxTween.tween(camFollow, {y: camFollow.y - (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+								}
+							});
+						case 2: // Up note
+							camMovement = FlxTween.tween(camFollow, {y: camFollow.y - randomOffset}, duration, {ease: FlxEase.sineOut,
+								onComplete: function(twn:FlxTween) {
+									FlxTween.tween(camFollow, {y: camFollow.y + (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+								}
+							});
+						case 3: // Right note
+							camMovement = FlxTween.tween(camFollow, {x: camFollow.x + randomOffset}, duration, {ease: FlxEase.sineOut,
+								onComplete: function(twn:FlxTween) {
+									FlxTween.tween(camFollow, {x: camFollow.x - (randomOffset * 0.5)}, duration * 1.5, {ease: FlxEase.sineInOut});
+								}
+							});
+					}
+			}
+		}
 
 		if (note.hitsoundVolume > 0 && !note.hitsoundDisabled)
 			FlxG.sound.play(Paths.sound(note.hitsound), note.hitsoundVolume);
@@ -3606,7 +3741,7 @@ class PlayState extends MusicBeatState
 			return true;
 		}
 
-		for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'shaders/'))
+		for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'shaders/', false))
 		{
 			var frag:String = folder + name + '.frag';
 			var vert:String = folder + name + '.vert';
@@ -3632,6 +3767,29 @@ class PlayState extends MusicBeatState
 				return true;
 			}
 		}
+		
+		var internalFragPath = 'assets/shaders/' + name + '.frag';
+		var internalVertPath = 'assets/shaders/' + name + '.vert';
+		var internalFrag:String = null;
+		var internalVert:String = null;
+		var internalFound:Bool = false;
+
+		if (FileSystem.exists(internalFragPath))
+		{
+			internalFrag = File.getContent(internalFragPath);
+			internalFound = true;
+		}
+		if (FileSystem.exists(internalVertPath))
+		{
+			internalVert = File.getContent(internalVertPath);
+			internalFound = true;
+		}
+		if (internalFound)
+		{
+			runtimeShaders.set(name, [internalFrag, internalVert]);
+			return true;
+		}
+		
 			#if (LUA_ALLOWED || HSCRIPT_ALLOWED)
 			addTextToDebug('Missing shader $name .frag AND .vert files!', FlxColor.RED);
 			#else

@@ -1,0 +1,27 @@
+{
+	"songs": [
+		[
+			"Underground",
+			"glace",
+			[
+				86,
+				93,
+				235
+			]
+		]
+	],
+	"hiddenUntilUnlocked": false,
+	"hideFreeplay": false,
+	"weekBackground": "stage",
+	"difficulties": "",
+	"weekCharacters": [
+		"bf",
+		"bf",
+		"gf"
+	],
+	"storyName": "Chapter 4",
+	"weekName": "Chapter 4",
+	"hideStoryMode": false,
+	"weekBefore": "tutorial",
+	"startUnlocked": true
+}
